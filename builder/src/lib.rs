@@ -11,6 +11,7 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
     let fields = builder_fields(&input.data);
     let fields_init = builder_init(&input.data);
+    let fields_setter = builder_setters(&input.data);
 
     let expanded = quote! {
         pub struct #builder_name {
@@ -23,6 +24,10 @@ pub fn derive(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                     #fields_init
                 }
             }
+        }
+
+        impl #builder_name {
+            #fields_setter
         }
     };
     proc_macro::TokenStream::from(expanded)
@@ -52,6 +57,23 @@ fn builder_init(data: &Data) -> TokenStream {
     });
     quote! {
         #(#inits),*
+    }
+}
+
+fn builder_setters(data: &Data) -> TokenStream {
+    let fields = extract_fields(data);
+    let setters = fields.named.iter().map(|f| {
+        let ident = &f.ident;
+        let ty = &f.ty;
+        quote! {
+            fn #ident(&mut self, #ident: #ty) -> &mut Self {
+                self.#ident = Some(#ident);
+                self
+            }
+        }
+    });
+    quote! {
+        #(#setters)*
     }
 }
 
